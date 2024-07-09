@@ -1,8 +1,10 @@
+use crate::util::{error, ErrorType};
 use std::collections::HashMap;
 use std::io::{Write, Read};
 use std::net::TcpStream;
 use http_parser::{HttpParser, HttpParserCallback, HttpParserType, ParseAction};
 use std::str::from_utf8;
+use std::process::exit;
 
 pub enum HttpMethod {
     Get
@@ -79,7 +81,10 @@ fn to_status_code(reason: &str) -> u16 {
         "Loop Detected" => 508,
         "Not Extended" => 510,
         "Network Authentication Required" => 511,
-        _ => panic!("Invalid status code")
+        _ => {
+            error(ErrorType::HttpError, format!("Received invalid reason phrase: {}", reason));
+            exit(1);
+        }
     }
 }
 
@@ -150,12 +155,24 @@ impl HttpRequest {
     }
     
     pub fn send(&self, url: String) -> HttpResponse {
-        let mut stream = TcpStream::connect(url).unwrap();
+        let mut stream: TcpStream;
+        
+        if let Ok(result) = TcpStream::connect(url) {
+            stream = result;
+        } else {
+            error(ErrorType::NetworkError, "Failed to connect to server");
+            exit(1);
+        }
 
-        stream.write_all(self.to_string().as_bytes()).unwrap();
+        if let Err(_) = stream.write_all(self.to_string().as_bytes()) {
+            error(ErrorType::NetworkError, "Failed to send request to server");
+            exit(1);
+        }
 
         let mut response_text = String::new();
-        stream.read_to_string(&mut response_text).unwrap();
+        if let Err(_) = stream.read_to_string(&mut response_text) {
+            error(ErrorType::NetworkError, "Failed to read response from server");
+        }
 
         let mut parser = HttpParser::new(HttpParserType::Response);
 

@@ -1,9 +1,12 @@
 mod install;
 mod http;
+mod util;
 
 use install::install;
 use semver::Version;
+use util::{error, ErrorType};
 use clap::{Parser, Subcommand};
+use std::process::exit;
 
 #[derive(Subcommand)]
 enum Command {
@@ -26,8 +29,15 @@ fn main() {
 
     match &cli.command {
         Command::Install { version } => {
-            let version = Version::parse(&version).unwrap();
-            install(version);
+            let parsed_version: Version;
+            if let Ok(result) = semver::Version::parse(version) {
+                parsed_version = result;
+            } else {
+                error(ErrorType::VersionError, format!("Invalid version: {}", version));
+                exit(1);
+            }
+
+            install(parsed_version);
         }
     }
 }

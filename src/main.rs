@@ -1,4 +1,5 @@
 mod install;
+mod http;
 
 use install::install;
 use semver::Version;

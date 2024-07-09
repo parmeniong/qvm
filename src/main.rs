@@ -10,7 +10,6 @@ enum Command {
     /// Install a version of Quasar
     Install {
         /// The version of Quasar to install
-        #[arg(short, long)]
         version: String
     }
 }
